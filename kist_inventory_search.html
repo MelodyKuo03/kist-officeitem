@@ -1,0 +1,262 @@
+
+<h2 class="sr-only">KIST 辦公室資源搜尋工具</h2>
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.wrap { padding: 1rem 0; }
+.search-bar { display: flex; gap: 8px; margin-bottom: 1rem; }
+.search-bar input { flex: 1; font-size: 15px; }
+.filters { display: flex; gap: 8px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.filter-btn { font-size: 12px; padding: 4px 12px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-secondary); cursor: pointer; transition: all 0.15s; }
+.filter-btn.active { background: var(--color-background-secondary); color: var(--color-text-primary); border-color: var(--color-border-primary); font-weight: 500; }
+.results { display: flex; flex-direction: column; gap: 8px; }
+.item-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 14px; display: flex; align-items: center; gap: 12px; }
+.item-card:hover { border-color: var(--color-border-secondary); }
+.loc-badge { font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+.loc-好奇 { background: #E6F1FB; color: #0C447C; }
+.loc-熱情 { background: #EEEDFE; color: #3C3489; }
+.loc-實習 { background: #EAF3DE; color: #27500A; }
+.loc-倉庫 { background: #FAEEDA; color: #633806; }
+.item-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); flex: 1; }
+.item-meta { font-size: 12px; color: var(--color-text-secondary); white-space: nowrap; }
+.item-note { font-size: 12px; color: var(--color-text-tertiary); flex-shrink: 0; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.freq-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+.freq-高 { background: #FCEBEB; color: #A32D2D; }
+.freq-中 { background: #E1F5EE; color: #0F6E56; }
+.freq-低 { background: #F1EFE8; color: #5F5E5A; }
+.empty { text-align: center; padding: 2rem; color: var(--color-text-tertiary); font-size: 14px; }
+.count { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 10px; }
+</style>
+
+<div class="wrap">
+  <input type="text" id="q" placeholder="搜尋物品名稱，例如：剪刀、麥克筆..." style="width:100%;font-size:15px;margin-bottom:12px;" oninput="render()" />
+  
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all',this)">全部</button>
+    <button class="filter-btn" onclick="setFilter('辦(好奇)',this)">辦公室・好奇</button>
+    <button class="filter-btn" onclick="setFilter('辦(熱情/樂觀)',this)">辦公室・熱情/樂觀</button>
+    <button class="filter-btn" onclick="setFilter('辦(實習區)',this)">辦公室・實習區</button>
+    <button class="filter-btn" onclick="setFilter('倉',this)">倉庫</button>
+  </div>
+
+  <div class="count" id="count"></div>
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+const items = [
+  {name:'粗黑麥克筆',loc:'辦(好奇)',freq:'中',qty:'8 支',note:''},
+  {name:'細黑麥克筆',loc:'辦(好奇)',freq:'中',qty:'17 支',note:''},
+  {name:'細藍麥克筆',loc:'辦(好奇)',freq:'中',qty:'6 支',note:''},
+  {name:'粗白油漆筆',loc:'辦(好奇)',freq:'低',qty:'2 支',note:''},
+  {name:'紅白板筆',loc:'辦(好奇)',freq:'中',qty:'7 支',note:'橘1'},
+  {name:'黑白板筆',loc:'辦(好奇)',freq:'中',qty:'12 支',note:''},
+  {name:'藍白板筆',loc:'辦(好奇)',freq:'中',qty:'7 支',note:''},
+  {name:'白板筆補充',loc:'辦(好奇)',freq:'低',qty:'7 支',note:'橘2 黑2 藍2 紅1'},
+  {name:'剪刀',loc:'辦(好奇)',freq:'高',qty:'8 支',note:''},
+  {name:'美工刀',loc:'辦(好奇)',freq:'中',qty:'6 支',note:''},
+  {name:'美工刀替換片',loc:'辦(好奇)',freq:'低',qty:'1 組',note:''},
+  {name:'長尾夾(散)',loc:'辦(好奇)',freq:'高',qty:'1 盒',note:''},
+  {name:'長尾夾 51mm',loc:'辦(好奇)',freq:'低',qty:'1 盒',note:'12個'},
+  {name:'長尾夾 41mm',loc:'辦(好奇)',freq:'低',qty:'1 個',note:'12個'},
+  {name:'長尾夾 32mm',loc:'辦(好奇)',freq:'低',qty:'3 個',note:'36個'},
+  {name:'長尾夾 25mm',loc:'辦(好奇)',freq:'低',qty:'3 個',note:'36個'},
+  {name:'長尾夾 19mm',loc:'辦(好奇)',freq:'低',qty:'2 個',note:'24個'},
+  {name:'長尾夾 15mm',loc:'辦(好奇)',freq:'低',qty:'2 個',note:'24個'},
+  {name:'計算機',loc:'辦(好奇)',freq:'低',qty:'1 台',note:''},
+  {name:'泡棉膠',loc:'辦(好奇)',freq:'中',qty:'2 捆',note:''},
+  {name:'鉛筆',loc:'辦(好奇)',freq:'低',qty:'25 支',note:''},
+  {name:'2B畫卡鉛筆',loc:'辦(好奇)',freq:'低',qty:'15 支',note:''},
+  {name:'藍原子筆',loc:'辦(好奇)',freq:'低',qty:'34 支',note:''},
+  {name:'黑原子筆',loc:'辦(好奇)',freq:'低',qty:'17 支',note:''},
+  {name:'紅包',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'卡片',loc:'辦(好奇)',freq:'低',qty:'6 張',note:''},
+  {name:'卡片信封(大)',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'卡片信封(小)',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'禮品紙袋(小)',loc:'辦(好奇)',freq:'低',qty:'6 個',note:''},
+  {name:'工具箱',loc:'辦(好奇)',freq:'低',qty:'1 盒',note:''},
+  {name:'工具(散)',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'捲尺',loc:'辦(好奇)',freq:'低',qty:'1 個',note:''},
+  {name:'高效貼土',loc:'辦(好奇)',freq:'低',qty:'4 盒',note:''},
+  {name:'隨意貼土',loc:'辦(好奇)',freq:'低',qty:'2 個',note:''},
+  {name:'釣魚線',loc:'辦(好奇)',freq:'低',qty:'1 捆',note:''},
+  {name:'KIST對話卡',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'正向卡',loc:'辦(好奇)',freq:'低',qty:'1 盒',note:''},
+  {name:'七大品格印章',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'點點貼(多色)',loc:'辦(好奇)',freq:'低',qty:'2 包',note:''},
+  {name:'字母圓貼',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'笑臉貼',loc:'辦(好奇)',freq:'低',qty:'10 張',note:'橘4 黃3 桃紅3'},
+  {name:'手寫標籤(大白)',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'手寫標籤(紅邊)',loc:'辦(好奇)',freq:'低',qty:'1 包',note:'含2張大張'},
+  {name:'保護貼標籤',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'圓形貼膜',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'無痕透明膠帶',loc:'辦(好奇)',freq:'低',qty:'20 捆',note:''},
+  {name:'掛勾區(含木夾)',loc:'辦(好奇)',freq:'低',qty:'1 盒',note:''},
+  {name:'打洞機',loc:'辦(好奇)',freq:'低',qty:'1 台',note:''},
+  {name:'文件原子夾',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'無黏便條紙',loc:'辦(好奇)',freq:'低',qty:'6 本',note:''},
+  {name:'按壓立可帶(替換)',loc:'辦(好奇)',freq:'低',qty:'1 盒',note:''},
+  {name:'派對裝飾',loc:'辦(好奇)',freq:'低',qty:'1 組',note:''},
+  {name:'長型氣球',loc:'辦(好奇)',freq:'低',qty:'1 組',note:''},
+  {name:'夾鏈袋',loc:'辦(好奇)',freq:'低',qty:'1 包',note:'很多'},
+  {name:'白黏土',loc:'辦(好奇)',freq:'低',qty:'1 包',note:''},
+  {name:'多色黏土',loc:'辦(好奇)',freq:'低',qty:'1 大包',note:''},
+  {name:'大鐵夾',loc:'辦(好奇)',freq:'低',qty:'4 個',note:''},
+  {name:'透明膠帶',loc:'辦(好奇)',freq:'低',qty:'22 捲',note:''},
+  {name:'雙面膠',loc:'辦(好奇)',freq:'低',qty:'10 捲',note:''},
+  {name:'封箱膠',loc:'辦(好奇)',freq:'低',qty:'3 捲',note:''},
+  {name:'海報膠',loc:'辦(好奇)',freq:'低',qty:'3 捲',note:''},
+  {name:'透氣膠',loc:'辦(好奇)',freq:'低',qty:'1 捲',note:''},
+  {name:'藍色印台墨水',loc:'辦(好奇)',freq:'低',qty:'1 罐',note:''},
+  {name:'木頭/彩色圖釘',loc:'辦(好奇)',freq:'低',qty:'1 罐',note:''},
+  {name:'金色扁頭圖釘',loc:'辦(好奇)',freq:'低',qty:'2 盒',note:''},
+  {name:'繪圖保護噴霧',loc:'辦(好奇)',freq:'低',qty:'4 罐',note:''},
+  {name:'自強牌粉筆',loc:'辦(好奇)',freq:'低',qty:'5 盒',note:'黃/橘/藍/紅/綠'},
+  {name:'三號訂書針',loc:'辦(好奇)',freq:'中',qty:'1 盒',note:'10小盒'},
+  {name:'十號訂書針',loc:'辦(好奇)',freq:'中',qty:'1 盒',note:''},
+  {name:'PP板',loc:'辦(好奇)',freq:'低',qty:'4 片',note:''},
+  {name:'有線滑鼠',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 支',note:''},
+  {name:'可立式計時器',loc:'辦(熱情/樂觀)',freq:'中',qty:'2 個',note:'盒裝'},
+  {name:'讀卡機',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:''},
+  {name:'電話連接線',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 條',note:''},
+  {name:'網路延長線',loc:'辦(熱情/樂觀)',freq:'中',qty:'4 條',note:''},
+  {name:'Bos喇叭',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 台',note:'剩下單邊'},
+  {name:'Nikon攝影機組',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:''},
+  {name:'VZ-R 雙模教學攝影機',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:'盒裝'},
+  {name:'Google 無線 HDMI',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:'盒裝'},
+  {name:'二合一快速充電線',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:'Golf PD 60W'},
+  {name:'小安卓充電線',loc:'辦(熱情/樂觀)',freq:'中',qty:'2 條',note:''},
+  {name:'Apple VGA 螢幕轉接頭',loc:'辦(熱情/樂觀)',freq:'中',qty:'2 個',note:''},
+  {name:'Apple HDMI 轉接頭',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:''},
+  {name:'錄音筆',loc:'辦(熱情/樂觀)',freq:'中',qty:'3 支',note:''},
+  {name:'音源線',loc:'辦(熱情/樂觀)',freq:'中',qty:'6 條',note:''},
+  {name:'自拍遙控器',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:'藍芽'},
+  {name:'Logi 視訊攝影機',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:''},
+  {name:'螢幕線',loc:'辦(熱情/樂觀)',freq:'中',qty:'2 條',note:''},
+  {name:'對講機',loc:'辦(熱情/樂觀)',freq:'中',qty:'9 組',note:''},
+  {name:'BOYA 麥克風轉接頭',loc:'辦(熱情/樂觀)',freq:'中',qty:'4 個',note:'轉手機用'},
+  {name:'光碟機',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:''},
+  {name:'電腦電源線',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 條',note:''},
+  {name:'Surface 變壓充電線',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:''},
+  {name:'親子 HDMI',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:''},
+  {name:'USB 豆腐頭',loc:'辦(熱情/樂觀)',freq:'中',qty:'2 個',note:''},
+  {name:'Type-C 螢幕線',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 條',note:''},
+  {name:'Type-C 轉接頭',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:''},
+  {name:'Type-C 多功轉接頭',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:''},
+  {name:'HDMI螢幕線',loc:'辦(熱情/樂觀)',freq:'中',qty:'2 條',note:''},
+  {name:'雙 USB 線',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 條',note:''},
+  {name:'耳機',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:''},
+  {name:'HDMI VGA',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 條',note:''},
+  {name:'Type-C USB 線',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 條',note:''},
+  {name:'雙 Type-C 線',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 條',note:''},
+  {name:'Type-C 雙轉接頭',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 條',note:''},
+  {name:'螢幕轉接頭 HDMI音源線',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 個',note:''},
+  {name:'Gopro & 配件',loc:'辦(熱情/樂觀)',freq:'中',qty:'1 組',note:'盒裝'},
+  {name:'彩色筆',loc:'辦(實習區)',freq:'高',qty:'9 盒',note:''},
+  {name:'郵局箱子(財報會計)',loc:'倉(1)',freq:'低',qty:'1 箱',note:'財報/會計憑證'},
+  {name:'捐款收據',loc:'倉(1)',freq:'低',qty:'7 箱',note:'106*5 108*1 109*1'},
+  {name:'帳冊',loc:'倉(1)',freq:'低',qty:'8 箱',note:'102-110年份'},
+  {name:'排汗衫-XS',loc:'倉(1)',freq:'低',qty:'50 件',note:''},
+  {name:'排汗衫-S',loc:'倉(1)',freq:'低',qty:'80 件',note:''},
+  {name:'排汗衫-M',loc:'倉(1)',freq:'低',qty:'50 件',note:''},
+  {name:'排汗衫-L',loc:'倉(1)',freq:'低',qty:'30 件',note:''},
+  {name:'排汗衫-XL',loc:'倉(1)',freq:'低',qty:'20 件',note:''},
+  {name:'排汗衫-2L',loc:'倉(1)',freq:'低',qty:'20 件',note:''},
+  {name:'排汗衫-3L',loc:'倉(1)',freq:'低',qty:'10 件',note:''},
+  {name:'排汗衫-4XL',loc:'倉(1)',freq:'低',qty:'10 件',note:''},
+  {name:'旗座',loc:'倉(1)',freq:'低',qty:'10 個',note:''},
+  {name:'旗竿',loc:'倉(1)',freq:'低',qty:'10 個',note:''},
+  {name:'帆布袋',loc:'倉(1)',freq:'低',qty:'60 個',note:''},
+  {name:'111學年新進教師手冊二冊(藍)',loc:'倉(1)',freq:'中',qty:'70 本',note:''},
+  {name:'112學年新進教師手冊一冊(藍)',loc:'倉(1)',freq:'中',qty:'14 本',note:''},
+  {name:'112學年新進教師手冊二冊(紅)',loc:'倉(1)',freq:'中',qty:'58 本',note:''},
+  {name:'112學年新進教師手冊三冊(綠)',loc:'倉(1)',freq:'中',qty:'76 本',note:''},
+  {name:'KIST便條紙(綠)',loc:'倉(1)',freq:'中',qty:'140 本',note:''},
+  {name:'KIST便條紙(藍)',loc:'倉(1)',freq:'中',qty:'180 本',note:''},
+  {name:'KIST便條紙(紅)',loc:'倉(1)',freq:'中',qty:'180 本',note:''},
+  {name:'藏青色短T-S',loc:'倉(1)',freq:'低',qty:'20 件',note:''},
+  {name:'藏青色短T-M',loc:'倉(1)',freq:'低',qty:'40 件',note:''},
+  {name:'藏青色短T-L',loc:'倉(1)',freq:'低',qty:'40 件',note:''},
+  {name:'藏青色短T-XL',loc:'倉(1)',freq:'低',qty:'31 件',note:''},
+  {name:'藏青色短T-2XL',loc:'倉(1)',freq:'低',qty:'20 件',note:''},
+  {name:'藏青色短T-3XL',loc:'倉(1)',freq:'低',qty:'10 件',note:''},
+  {name:'投影機',loc:'倉(1)',freq:'低',qty:'1 個',note:''},
+  {name:'衛生紙',loc:'倉(1)',freq:'高',qty:'1 箱',note:''},
+  {name:'各校名牌',loc:'倉(1)',freq:'低',qty:'1 箱',note:'歸還至對應群'},
+  {name:'拉米(桌遊)',loc:'倉(1)',freq:'低',qty:'1 套',note:''},
+  {name:'大白版',loc:'倉(1)',freq:'中',qty:'1 個',note:''},
+  {name:'中白板',loc:'倉(1)',freq:'中',qty:'4 個',note:''},
+  {name:'A3白紙',loc:'倉(1)',freq:'中',qty:'1/3包',note:'透明箱'},
+  {name:'便利貼',loc:'倉(1)',freq:'中',qty:'1 袋',note:'透明箱'},
+  {name:'小白板',loc:'倉(1)',freq:'中',qty:'9 個',note:'透明箱'},
+  {name:'水彩',loc:'倉(1)',freq:'中',qty:'5 盒',note:'透明箱'},
+  {name:'蠟筆(大)',loc:'倉(1)',freq:'中',qty:'3 盒',note:'透明箱'},
+  {name:'蠟筆(小)',loc:'倉(1)',freq:'中',qty:'6 盒',note:'透明箱'},
+  {name:'色鉛筆',loc:'倉(1)',freq:'中',qty:'6 盒',note:'透明箱'},
+  {name:'白紙',loc:'倉(1)',freq:'中',qty:'5 包',note:'透明箱'},
+  {name:'彩色筆',loc:'倉(1)',freq:'中',qty:'6 盒',note:'透明箱'},
+  {name:'藍筆',loc:'倉(1)',freq:'中',qty:'3 盒',note:'透明箱'},
+  {name:'文具袋(長尾夾釘書針橡皮擦)',loc:'倉(1)',freq:'中',qty:'1 袋',note:'透明箱'},
+  {name:'白板擦',loc:'倉(1)',freq:'中',qty:'5 個',note:'透明箱'},
+  {name:'白板筆(倉庫)',loc:'倉(1)',freq:'中',qty:'1個+1盒',note:'透明箱'},
+  {name:'剪刀(倉庫)',loc:'倉(1)',freq:'中',qty:'1 盒',note:'透明箱'},
+  {name:'團康材料(童軍繩飛盤)',loc:'倉(1)',freq:'中',qty:'1 包',note:'透明箱'},
+  {name:'小腳架',loc:'倉(1)',freq:'中',qty:'7 個',note:'透明箱'},
+];
+
+let currentFilter = 'all';
+
+function locLabel(loc) {
+  if (loc.includes('好奇')) return {text:'辦・好奇', cls:'loc-好奇'};
+  if (loc.includes('熱情')) return {text:'辦・熱情/樂觀', cls:'loc-熱情'};
+  if (loc.includes('實習')) return {text:'辦・實習區', cls:'loc-實習'};
+  return {text:'倉庫', cls:'loc-倉庫'};
+}
+
+function freqLabel(f) {
+  if (f==='高') return {text:'每週用', cls:'freq-高'};
+  if (f==='中') return {text:'每月用', cls:'freq-中'};
+  return {text:'低頻', cls:'freq-低'};
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function render() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  let filtered = items.filter(i => {
+    const matchQ = !q || i.name.toLowerCase().includes(q) || i.note.toLowerCase().includes(q);
+    const matchF = currentFilter === 'all' || 
+      (currentFilter === '倉' ? i.loc.startsWith('倉') : i.loc === currentFilter);
+    return matchQ && matchF;
+  });
+
+  const cnt = document.getElementById('count');
+  cnt.textContent = filtered.length > 0 ? `找到 ${filtered.length} 件物品` : '';
+
+  const res = document.getElementById('results');
+  if (filtered.length === 0) {
+    res.innerHTML = '<div class="empty">找不到符合的物品</div>';
+    return;
+  }
+
+  res.innerHTML = filtered.map(i => {
+    const loc = locLabel(i.loc);
+    const freq = freqLabel(i.freq);
+    return `<div class="item-card">
+      <span class="loc-badge ${loc.cls}">${loc.text}</span>
+      <span class="item-name">${i.name}</span>
+      <span class="freq-badge ${freq.cls}">${freq.text}</span>
+      <span class="item-meta">${i.qty}</span>
+      ${i.note ? `<span class="item-note" title="${i.note}">${i.note}</span>` : ''}
+    </div>`;
+  }).join('');
+}
+
+render();
+</script>
